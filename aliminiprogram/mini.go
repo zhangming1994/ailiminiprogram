@@ -50,7 +50,7 @@ type ModifyBaseInfoBiz struct {
 	AppName         string `json:"app_name,omitempty"`          // 小程序应用名称
 	AppEnglishName  string `json:"app_english_name,omitempty"`  // 小程序应用英文名称
 	AppSlogan       string `json:"app_slogan,omitempty"`        // 小程序应用简介，一句话描述小程序功能
-	AppLogo         *File  `json:"app_logo,omitempty"`          // 小程序应用logo图标，图片格式必须为：png、jpeg、jpg，建议上传像素为180*180
+	AppLogo         []byte `json:"app_logo,omitempty"`          // 小程序应用logo图标，图片格式必须为：png、jpeg、jpg，建议上传像素为180*180
 	AppDesc         string `json:"app_desc,omitempty"`          // 小程序应用描述，20-200个字
 	ServicePhone    string `json:"service_phone,omitempty"`     // 小程序客服电话
 	ServiceEmail    string `json:"service_email,omitempty"`     // 小程序客服邮箱
@@ -62,8 +62,10 @@ type MultiRender interface {
 	MultipartParams() map[string]io.Reader
 }
 
-func (b *ModifyBaseInfoBiz) Params() map[string]string {
-	params := make(map[string]string)
+// ModifyBaseInfo 小程序修改基础信息
+func (s *MiniService) ModifyBaseInfo(ctx context.Context, logo []byte, b *ModifyBaseInfo, opts ...ValueOptions) error {
+	apiMethod := "alipay.open.mini.baseinfo.modify"
+	params := make(map[string]interface{})
 	if b.AppName != "" {
 		params["app_name"] = b.AppName
 	}
@@ -85,20 +87,10 @@ func (b *ModifyBaseInfoBiz) Params() map[string]string {
 	if b.MiniCategoryIDs != "" {
 		params["mini_category_ids"] = b.MiniCategoryIDs
 	}
-	return params
-}
-func (b *ModifyBaseInfoBiz) MultipartParams() map[string]io.Reader {
-	params := make(map[string]io.Reader)
-	if b.AppLogo != nil {
-		params["app_logo"] = b.AppLogo
+	if len(logo) > 0 {
+		params["app_logo"] = logo
 	}
-	return params
-}
-
-// ModifyBaseInfo 小程序修改基础信息
-func (s *MiniService) ModifyBaseInfo(ctx context.Context, biz *ModifyBaseInfoBiz, opts ...ValueOptions) error {
-	apiMethod := "alipay.open.mini.baseinfo.modify"
-	req, err := s.Client.NewRequest(apiMethod, biz, opts...)
+	req, err := s.Client.NewRequest(apiMethod, params, opts...)
 	if err != nil {
 		return err
 	}
@@ -199,10 +191,21 @@ type MiniAppCategory struct {
 	ParentCategoryID   string `json:"parent_category_id"`
 }
 
-// QueryCategoryResp 小程序类目树查询resp
 type QueryCategoryResp struct {
-	MiniCategoryList []*MiniAppCategory `json:"mini_category_list"`
-	CategoryList     []*MiniAppCategory `json:"category_list"`
+	AlipayOpenMiniCategoryQueryResponse struct {
+		Code             string `json:"code"`
+		Msg              string `json:"msg"`
+		MiniCategoryList []struct {
+			CategoryId         string `json:"category_id"`
+			CategoryName       string `json:"category_name"`
+			ParentCategoryId   string `json:"parent_category_id"`
+			HasChild           bool   `json:"has_child"`
+			NeedLicense        bool   `json:"need_license"`
+			NeedOutDoorPic     bool   `json:"need_out_door_pic"`
+			NeedSpecialLicense bool   `json:"need_special_license"`
+		} `json:"mini_category_list"`
+	} `json:"alipay_open_mini_category_query_response"`
+	Sign string `json:"sign"`
 }
 
 // QueryCategory 小程序类目树查询

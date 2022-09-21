@@ -3,9 +3,12 @@ package aliminiprogram
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"strings"
 )
 
@@ -53,4 +56,55 @@ func md5Encode(data string) string {
 	h := md5.New()
 	h.Write([]byte(data))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// CertProcess 证书处理
+func CertProcess(privateKey, alipayCertPublicKeyRSA2, rootCert, appCert string) (private *rsa.PrivateKey, publicKey *rsa.PublicKey, rootCertSN, appCertSN string, err error) {
+	encodedKey, err := base64.StdEncoding.DecodeString(privateKey)
+	if err != nil {
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+	private, err = x509.ParsePKCS1PrivateKey(encodedKey)
+	if err != nil {
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+
+	aliMiniCertPublicKey, err := base64.StdEncoding.DecodeString(alipayCertPublicKeyRSA2)
+	if err != nil {
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+	blockCert, _ := pem.Decode(aliMiniCertPublicKey)
+	x509Cert, err := x509.ParseCertificate(blockCert.Bytes)
+	if err != nil {
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+	pub, ok := x509Cert.PublicKey.(*rsa.PublicKey)
+	if ok {
+		//publicKey = base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(pub))
+		publicKey = pub
+	} else {
+		err = fmt.Errorf("x509 publickeyRSA2 assert error")
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+
+	// 根证书sn
+	aliMinirRootCert, err := base64.StdEncoding.DecodeString(rootCert)
+	if err != nil {
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+	rootCertSN, err = GetCertSn(aliMinirRootCert)
+	if err != nil {
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+
+	// appcertsn
+	aliMiniAppCert, err := base64.StdEncoding.DecodeString(appCert)
+	if err != nil {
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+	appCertSN, err = GetCertSn(aliMiniAppCert)
+	if err != nil {
+		return private, publicKey, rootCertSN, appCertSN, err
+	}
+	return
 }

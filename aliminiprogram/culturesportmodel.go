@@ -2,32 +2,6 @@ package aliminiprogram
 
 import "time"
 
-// AliMiniSportNotifyCommonReqParam 蚂蚁消息公共请求参数
-type AliMiniSportNotifyCommonReqParam struct {
-	NotifyId     string `json:"notify_id"`     // 通知id
-	UtcTimestamp string `json:"utc_timestamp"` // 消息发送时的服务端时间
-	MsgMethod    string `json:"msg_method"`    // 消息接口名称
-	AppId        string `json:"app_id"`        // 消息接受方的应用id
-	MsgType      string `json:"msg_type"`      // 消息类型。目前支持类型：sys：系统消息；usr，用户消息；app，应用消息
-	MsgUid       string `json:"msg_uid"`       // 消息归属的商户支付宝id
-	MsgAppId     string `json:"msg_app_id"`    // 消息归属方的id
-	Version      string `json:"version"`       // 版本号
-	BizContent   string `json:"biz_content"`   // 消息豹纹
-	Sign         string `json:"sign"`          // 签名
-	SignType     string `json:"sign_type"`     // 签名类型
-	EncryptType  string `json:"encrypt_type"`  // 加密算法
-	Charset      string `json:"charset"`       // 编码集，该字符集为验签和解密所需要的字符集
-	NotifyType   string `json:"notify_type"`   // [1.0版本老协议参数]通知类型，1.1接口没有该参数
-	NotifyTime   string `json:"notify_time"`   // [1.0版本老协议参数]通知时间，北京时区，时间格式为：yyyy-MM-dd HH:mm:ss，如果服务器部署在国外请注意做时区转换。若version=1.1则可以使用utc_timestamp识别时间
-	AuthAppId    string `json:"auth_app_id"`   //  授权方的应用id
-}
-
-// AliMiniNotifyResp 消息通知公共返回参数
-type AliMiniNotifyResp struct {
-	Fail    bool `json:"fail"`
-	Success bool `json:"success"`
-}
-
 // SportStoreEntryModifyCommonField 场馆入驻和场馆修改公共请求参数
 type SportStoreEntryModifyCommonField struct {
 	FacilityList         []int    `json:"facility_list"`                     // 场馆设施
@@ -38,7 +12,8 @@ type SportStoreEntryModifyCommonField struct {
 	VenueType            []string `json:"venue_type" validate:"required"`    // 场馆类型
 	OutVenueId           string   `json:"out_venue_id" validate:"required"`  // 主场馆在服务商的ID
 	JoinType             string   `json:"join_type"`                         // 接入方式
-	VenueId              string   `json:"venue_id"`                          // 上官商户PID
+	VenueId              string   `json:"venue_id"`                          // 支付宝主场馆ID，不可变更
+	VenuePid             string   `json:"venue_pid"`                         // 场馆商户PId
 	Name                 string   `json:"name" validate:"required"`          // 场馆名称
 	Desc                 string   `json:"desc"`                              // 场馆描述
 	Poster               string   `json:"poster" validate:"required"`        // 场馆主图海报图片的base64编码 图片格式必须是jpg 图片大小不超过125KB 非data uri格式
@@ -65,33 +40,6 @@ type SportStoreEntryModifyCommonField struct {
 	Vip                  string   `json:"vip"`                               // 会员卡信息
 	RecPrice             string   `json:"rec_price"`                         // 场馆维度的推荐价格
 	Training             string   `json:"training"`                          // 培训信息
-}
-
-// SportStoreQueryAndModifyRespCommonField 场馆查询和修改公共返回参数
-type SportStoreQueryAndModifyRespCommonField struct {
-	PictureList     []string `json:"picture_list"`
-	VenueType       []string `json:"venue_type"`
-	TagList         []string `json:"tag_list"`
-	Phone           []string `json:"phone"`
-	OutVenueId      string   `json:"out_venue_id"`
-	VenueId         string   `json:"venue_id"`
-	JoinType        string   `json:"join_type"`
-	VenuePid        string   `json:"venue_pid"`
-	Name            string   `json:"name"`
-	Desc            string   `json:"desc"`
-	Poster          string   `json:"poster"`
-	OpeningHours    string   `json:"opening_hours"`
-	ProvinceCode    string   `json:"province_code"`
-	CityCode        string   `json:"city_code"`
-	AreaCode        string   `json:"area_code"`
-	Longitude       string   `json:"longitude"`
-	Latitude        string   `json:"latitude"`
-	Address         string   `json:"address"`
-	Traffic         string   `json:"traffic"`
-	Poi             string   `json:"poi"`
-	VenueStatus     string   `json:"venue_status"`
-	Bookable        string   `json:"bookable"`
-	ExtraServiceUrl string   `json:"extra_service_url"`
 }
 
 // SubVenueList 子场馆列表
@@ -153,17 +101,44 @@ type SportStoreInfoQueryReq struct {
 	VenueId    string `json:"venue_id"`
 }
 
-// SportStoreInfoQueryResp 场馆信息查询返回参数
-type SportStoreInfoQueryResp struct {
-	SportStoreEntryModifyCommonField
-	SubVenueList    []SubVenueList `json:"sub_venue_list"` // 子场馆列表
-	ProductTypeList []string       `json:"product_type_list"`
-}
-
 // SportStoreModifyReq 场馆信息修改
 type SportStoreModifyReq struct {
 	SportStoreEntryModifyCommonField
 	Status string `json:"status"`
+}
+
+// SportStoreInfoResp 场馆信息查询
+type SportStoreInfoResp struct {
+	AlipayCommerceSportsVenueQueryResponse struct {
+		Code            string         `json:"code"`
+		Msg             string         `json:"msg"`
+		VenueId         string         `json:"venue_id"`                          // 上官商户PID
+		OutVenueId      string         `json:"out_venue_id" validate:"required"`  // 主场馆在服务商的ID
+		JoinType        string         `json:"join_type"`                         // 接入方式
+		VenueType       []string       `json:"venue_type" validate:"required"`    // 场馆类型
+		Name            string         `json:"name" validate:"required"`          // 场馆名称
+		Desc            string         `json:"desc"`                              // 场馆描述
+		Poster          string         `json:"poster" validate:"required"`        // 场馆主图海报图片的base64编码 图片格式必须是jpg 图片大小不超过125KB 非data uri格式
+		PictureList     []string       `json:"picture_list"`                      // 场馆图片编码列表 要求参见主图要求
+		ProductTypeList []string       `json:"product_type_list"`                 // 场馆售卖的产品集合 中心化必填 半中心化不用写
+		OpeningHours    string         `json:"opening_hours" validate:"required"` // 营业开始时间-结束时间
+		Phone           []string       `json:"phone" validate:"required"`         // 联系电话
+		ProvinceCode    string         `json:"province_code" validate:"required"` // 省份code
+		CityCode        string         `json:"city_code" validate:"required"`     // 城市code
+		AreaCode        string         `json:"area_code" validate:"required"`     // 区域code
+		Longitude       string         `json:"longitude" validate:"required"`     // 经度
+		Latitude        string         `json:"latitude" validate:"required"`      // 纬度
+		Address         string         `json:"address" validate:"required"`       // 地址
+		Traffic         string         `json:"traffic" validate:"required"`       // 交通信息
+		Poi             string         `json:"poi"`                               // POI
+		TagList         []string       `json:"tag_list"`                          // 标签列表
+		VenueStatus     string         `json:"venue_status"`
+		Bookable        string         `json:"bookable"`          // 场馆是否可预定Y/N，不传默认可预定
+		ExtraServiceUrl string         `json:"extra_service_url"` // 场馆更多服务链接：可从文体场馆页跳转进此链接，进入服务商的该场馆页面
+		SubVenueList    []SubVenueList `json:"sub_venue_list"`    // 子场馆列表
+	} `json:"alipay_commerce_sports_venue_query_response"`
+	AlipayCertSn string `json:"alipay_cert_sn"`
+	Sign         string `json:"sign"`
 }
 
 // SportStoreModifyResp 场馆信息修改返回参数
@@ -475,36 +450,36 @@ type VenueOrder struct {
 	OrderType        string                `json:"order_type"`         // 订单类型
 	OrderStatus      string                `json:"order_status"`       // 订单交易状态 pay_succ-已支付（若支持多次核销则在全部核销之前都是已支付状态）,refund_succ-已退款,verify_proc-使用中（已入场但是还未结束）,verify_succ-已使用,overdue-已过期（超过使用时间未使用且未退款）
 	TotalAmount      float64               `json:"total_amount"`       // 订单总金额(元)
-	VenueId          string                `json:"venue_id"`           // 特殊可选字段 支付宝主场馆ID，场馆入驻时支付宝返回的主场馆ID。和out_venue_id之间至少存在一个 特殊可选字段
-	SubVenueId       string                `json:"sub_venue_id"`       // 可选字段 支付宝子场馆ID，场馆入驻时支付宝返回的子场馆ID。如果在场馆入驻时有子场馆则传入入驻时返回的sub_venue_id；如果场馆入驻时不存在子场馆，则无须传入。
+	VenueId          *string               `json:"venue_id"`           // 特殊可选字段 支付宝主场馆ID，场馆入驻时支付宝返回的主场馆ID。和out_venue_id之间至少存在一个 特殊可选字段
+	SubVenueId       *string               `json:"sub_venue_id"`       // 可选字段 支付宝子场馆ID，场馆入驻时支付宝返回的子场馆ID。如果在场馆入驻时有子场馆则传入入驻时返回的sub_venue_id；如果场馆入驻时不存在子场馆，则无须传入。
 	OutVenueId       string                `json:"out_venue_id"`       // 特殊可选字段 isv场馆id，与场馆入驻时一致，须保证系统内唯一。和venue_id之间至少存在一个
-	OutSubVenueId    string                `json:"out_sub_venue_id"`   // 可选字段 isv子场馆id，与场馆入驻时一致，须保证系统内唯一。如果在场馆入驻时有子场馆则传入入住时的out_sub_venue_id；如果场馆入驻时不存在子场馆，则无须传入
+	OutSubVenueId    *string               `json:"out_sub_venue_id"`   // 可选字段 isv子场馆id，与场馆入驻时一致，须保证系统内唯一。如果在场馆入驻时有子场馆则传入入住时的out_sub_venue_id；如果场馆入驻时不存在子场馆，则无须传入
 	CreateTime       string                `json:"create_time"`        // 订单创建时间 2022-04-05 12:12:12
 	ProductGroupList []ProductSimpleInfo   `json:"product_group_list"` // 订单商品信息列表，目前仅支持1笔订单1条商品信息数据，即一笔订单只能包含1种商品。
 	TradeInfoList    []VenueOrderTradeInfo `json:"trade_info_list"`    // 可选 订单的交易信息列表，传入支付、退款等操作的信息。第一次同步必传；第一次同步之后如果没有交易变化则调用时可以不传本参数。每一条交易数据同步后不支持修改。
 }
 
 type VenueOrderTradeInfo struct {
-	Id              string    `json:"id"`                // 交易记录号 单笔订单内唯一
-	TradeType       string    `json:"trade_type"`        // 交易类型，包括'pay'-支付、'refund'-退款
-	TradeNo         string    `json:"trade_no"`          // 支付宝交易单号，本条记录对应的交易信息。如果是支付行为，则直接为交易单号；如果是基于原支付交易单原路返还退款，则为原支付交易单号；
-	PartnerId       string    `json:"partner_id"`        // 交易所属pid，一般为发起交易的应用配置的pid。
-	UserId          string    `json:"user_id"`           // 支付宝用户id
-	Amount          float64   `json:"amount"`            // 金额(单位：元)，保留两位小数。支付时为订单金额、退款时为交易退款金额
-	RefundRequestNo string    `json:"refund_request_no"` // 特殊可选 支付宝退款交易的请求号，标识一次退款请求，对应发起退款时的out_request_no。交易类型为退款时必传。
-	OperationTime   time.Time `json:"operation_time"`    // 可选 Date类型 交易发起时间
-	Desc            string    `json:"desc"`              // 可选 操作描述
+	Id              string  `json:"id"`                // 交易记录号 单笔订单内唯一
+	TradeType       string  `json:"trade_type"`        // 交易类型，包括'pay'-支付、'refund'-退款
+	TradeNo         string  `json:"trade_no"`          // 支付宝交易单号，本条记录对应的交易信息。如果是支付行为，则直接为交易单号；如果是基于原支付交易单原路返还退款，则为原支付交易单号；
+	PartnerId       string  `json:"partner_id"`        // 交易所属pid，一般为发起交易的应用配置的pid。
+	UserId          string  `json:"user_id"`           // 支付宝用户id
+	Amount          float64 `json:"amount"`            // 金额(单位：元)，保留两位小数。支付时为订单金额、退款时为交易退款金额
+	RefundRequestNo string  `json:"refund_request_no"` // 特殊可选 支付宝退款交易的请求号，标识一次退款请求，对应发起退款时的out_request_no。交易类型为退款时必传。
+	OperationTime   string  `json:"operation_time"`    // 可选 Date类型, 2006-01-02 15:04:03 交易发起时间
+	Desc            string  `json:"desc"`              // 可选 操作描述
 }
 
 type ProductSimpleInfo struct {
-	ProductName  string    `json:"product_name"`  // 商品名称
-	CategoryName string    `json:"category_name"` // 可选字段 商品规格名称。可以是场地名称（比如羽毛球场地1）。当产品类型为日历型或者日历型票券时必填。
-	ZoneName     string    `json:"zone_name"`     // 可选字段 产品规格信息 仅日历型票券商品需要配置该字段
-	StartTime    time.Time `json:"start_time"`    // 可选字段 商品使用开始时间
-	EndTime      time.Time `json:"end_time"`      // 特殊可选 商品使用结束时间（Date类型），结束时间非空时必须有开始时间传值，且开始时间必须早于结束时间
-	ProductType  string    `json:"product_type"`  // 商品类型，'calendar'-日历型，'ticket'-票券，'course'-课程，'calendar_ticket'-日历型票券
-	SalePrice    string    `json:"sale_price"`    // 售卖价格 元 保留两位小数
-	Count        int64     `json:"count"`         // 可选 产品购买数量
+	ProductName  string     `json:"product_name"`  // 商品名称
+	CategoryName string     `json:"category_name"` // 可选字段 商品规格名称。可以是场地名称（比如羽毛球场地1）。当产品类型为日历型或者日历型票券时必填。
+	ZoneName     *string    `json:"zone_name"`     // 可选字段 产品规格信息 仅日历型票券商品需要配置该字段
+	StartTime    *time.Time `json:"start_time"`    // 可选字段 商品使用开始时间
+	EndTime      *time.Time `json:"end_time"`      // 特殊可选 商品使用结束时间（Date类型），结束时间非空时必须有开始时间传值，且开始时间必须早于结束时间
+	ProductType  string     `json:"product_type"`  // 商品类型，'calendar'-日历型，'ticket'-票券，'course'-课程，'calendar_ticket'-日历型票券
+	SalePrice    string     `json:"sale_price"`    // 售卖价格 元 保留两位小数
+	Count        int64      `json:"count"`         // 可选 产品购买数量
 }
 
 type VenueOrderResp struct {

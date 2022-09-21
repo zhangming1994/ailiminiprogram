@@ -89,7 +89,14 @@ func (s *AppService) QueryAppMembers(ctx context.Context, biz *QueryAppMembersBi
 
 // CreateAppQRCodeResp 生成小程序推广二维码返回值
 type CreateAppQRCodeResp struct {
-	QRCodeURL string `json:"qr_code_url"`
+	AlipayOpenAppQrcodeCreateResponse struct {
+		Code                 string `json:"code"`
+		Msg                  string `json:"msg"`
+		QrCodeUrl            string `json:"qr_code_url"`
+		QrCodeUrlCircleWhite string `json:"qr_code_url_circle_white"`
+		QrCodeUrlCircleBlue  string `json:"qr_code_url_circle_blue"`
+	} `json:"alipay_open_app_qrcode_create_response"`
+	Sign string `json:"sign"`
 }
 
 // CreateAppQRCodeBiz 生成小程序推广二维码

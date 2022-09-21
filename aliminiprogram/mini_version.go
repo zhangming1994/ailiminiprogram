@@ -89,7 +89,7 @@ type ApplyVersionAuditBiz struct {
 	ThirdScreenShot         string        `json:"third_screen_shot,omitempty"`
 	FourthScreenShot        string        `json:"fourth_screen_shot,omitempty"`
 	FifthScreenShot         string        `json:"fifth_screen_shot,omitempty"`
-	TestFileName            string        `json:"test_file_name,omitempty"`
+	TestFileName            []byte        `json:"test_file_name,omitempty"`
 	LicenseValidDate        string        `json:"license_valid_date,omitempty"`
 	AppVersion              string        `json:"app_version"`
 	LicenseName             string        `json:"license_name,omitempty"`
@@ -217,9 +217,6 @@ func (a ApplyVersionAuditBiz) Params() map[string]string {
 	if a.ThirdSpecialLicensePic != "" {
 		params["third_special_license_pic"] = a.ThirdSpecialLicensePic
 	}
-	if a.TestFileName != "" {
-		params["test_file_name"] = a.TestFileName
-	}
 	return params
 }
 
@@ -241,6 +238,119 @@ type RegionInfo struct {
 // ApplyVersionAudit 小程序提交审核
 func (s *MiniService) ApplyVersionAudit(ctx context.Context, biz *ApplyVersionAuditBiz, opts ...ValueOptions) error {
 	apiMethod := "alipay.open.mini.version.audit.apply"
+	params := make(map[string]interface{})
+	if biz.LicenseName != "" {
+		params["license_name"] = biz.LicenseName
+	}
+	if biz.AppLogo != "" {
+		params["app_logo"] = biz.AppLogo
+	}
+	if biz.SpeedUp != "" {
+		params["speed_up"] = biz.SpeedUp
+	}
+	if biz.AutoOnline != "" {
+		params["auto_online"] = biz.AutoOnline
+	}
+	if biz.LicenseValidDate != "" {
+		params["license_valid_date"] = biz.LicenseValidDate
+	}
+	if biz.AppVersion != "" {
+		params["app_version"] = biz.AppVersion
+	}
+	if biz.AppName != "" {
+		params["app_name"] = biz.AppName
+	}
+	if biz.AppEnglishName != "" {
+		params["app_english_name"] = biz.AppEnglishName
+	}
+	if biz.AppSlogan != "" {
+		params["app_slogan"] = biz.AppSlogan
+	}
+	if biz.AppCategoryIDs != "" {
+		params["app_category_ids"] = biz.AppCategoryIDs
+	}
+	if biz.AppDesc != "" {
+		params["app_desc"] = biz.AppDesc
+	}
+	if biz.ServicePhone != "" {
+		params["service_phone"] = biz.ServicePhone
+	}
+	if biz.ServiceEmail != "" {
+		params["service_email"] = biz.ServiceEmail
+	}
+	if biz.VersionDesc != "" {
+		params["version_desc"] = biz.VersionDesc
+	}
+	if biz.Memo != "" {
+		params["memo"] = biz.Memo
+	}
+	if biz.RegionType != "" {
+		params["region_type"] = biz.RegionType
+	}
+	if biz.ServiceRegionInfo != nil {
+		serviceRegionInfo, _ := json.Marshal(biz.ServiceRegionInfo)
+		params["service_region_info"] = string(serviceRegionInfo)
+	}
+	if biz.LicenseNo != "" {
+		params["license_no"] = biz.LicenseNo
+	}
+	if biz.MiniCategoryIDs != "" {
+		params["mini_category_ids"] = biz.MiniCategoryIDs
+	}
+	if biz.TestAccount != "" {
+		params["test_accout"] = biz.TestAccount
+	}
+	if biz.TestPassword != "" {
+		params["test_password"] = biz.TestPassword
+	}
+	if biz.BundleID != "" {
+		params["bundle_id"] = biz.BundleID
+	}
+	if biz.FirstLicensePic != "" {
+		params["first_license_pic"] = biz.FirstLicensePic
+	}
+	if biz.SecondLicensePic != "" {
+		params["second_license_pic"] = biz.SecondLicensePic
+	}
+	if biz.ThirdLicensePic != "" {
+		params["third_license_pic"] = biz.ThirdLicensePic
+	}
+	if biz.FourthLicensePic != "" {
+		params["fourth_license_pic"] = biz.FourthLicensePic
+	}
+	if biz.FifthLicensePic != "" {
+		params["fifth_license_pic"] = biz.FifthLicensePic
+	}
+	if biz.OutDoorPic != "" {
+		params["out_door_pic"] = biz.OutDoorPic
+	}
+	if biz.FirstScreenShot != "" {
+		params["first_screen_shot"] = biz.FirstScreenShot
+	}
+	if biz.SecondScreenShot != "" {
+		params["second_screen_shot"] = biz.SecondScreenShot
+	}
+	if biz.ThirdScreenShot != "" {
+		params["third_screen_shot"] = biz.ThirdScreenShot
+	}
+	if biz.FourthScreenShot != "" {
+		params["fourth_screen_shot"] = biz.FourthScreenShot
+	}
+	if biz.FifthScreenShot != "" {
+		params["fifth_screen_shot"] = biz.FifthScreenShot
+	}
+	if biz.FirstSpecialLicensePic != "" {
+		params["first_special_license_pic"] = biz.FirstSpecialLicensePic
+	}
+	if biz.SecondSpecialLicensePic != "" {
+		params["second_special_license_pic"] = biz.SecondSpecialLicensePic
+	}
+	if biz.ThirdSpecialLicensePic != "" {
+		params["third_special_license_pic"] = biz.ThirdSpecialLicensePic
+	}
+	if len(biz.TestFileName) > 0 {
+		params["test_file_name"] = biz.TestFileName
+	}
 	req, err := s.Client.NewRequest(apiMethod, biz, opts...)
 	if err != nil {
 		return err

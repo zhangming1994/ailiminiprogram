@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"git.myarena7.com/arena/platform/conf"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -83,21 +84,21 @@ func NotifyURL(notifyURL string) ValueOptions {
 
 // EncryptType 设置额外加密方式
 func EncryptType(encrypt string) ValueOptions {
-	return func(v url.Values) {
-		v.Set("encrypt_type", encrypt)
+	return func(o url.Values) {
+		o.Set("encrypt_type", encrypt)
 	}
 }
 
 func EncryptKey(key string) ValueOptions {
-	return func(v url.Values) {
-		v.Set("encrypt_key", key)
+	return func(o url.Values) {
+		o.Set("encrypt_key", key)
 	}
 }
 
 // AuthToken 针对用户授权接口，获取用户相关数据时，用于标识用户授权关系
 func AuthToken(authToken string) ValueOptions {
-	return func(v url.Values) {
-		v.Set("auth_token", authToken)
+	return func(o url.Values) {
+		o.Set("auth_token", authToken)
 	}
 }
 
@@ -149,6 +150,7 @@ type Client struct {
 
 	RootCertSN string
 	AppCertSN  string
+	AppAesKey  string
 
 	common Service // Reuse a single struct instead of allocating one for each service on the heap.
 
@@ -184,6 +186,8 @@ func NewClient(httpClient *http.Client, privateKey *rsa.PrivateKey, publicKey *r
 		client:     httpClient,
 		PrivateKey: privateKey,
 		PublicKey:  publicKey,
+		RootCertSN: options.RootCertSN,
+		AppCertSN:  options.AppCertSN,
 		BaseURL:    baseURL,
 		UserAgent:  userAgent,
 		o:          options,
@@ -311,10 +315,26 @@ func (c *Client) NewRequest(method string, bizContent interface{}, setters ...Va
 			reader = &b
 			contentType = w.FormDataContentType()
 		} else {
+			bizNewContent := bizContent
+			if v.Get("encrypt_type") != "" && v.Get("encrypt_key") != "" {
+				bizContentByte, err := json.Marshal(bizContent)
+				if err != nil {
+					return nil, err
+				}
+				keyByte, err := base64.StdEncoding.DecodeString(v.Get("encrypt_key"))
+				if err != nil {
+					return nil, err
+				}
+				aesBizContent, err := EncryptByAes(bizContentByte, keyByte)
+				if err != nil {
+					return nil, err
+				}
+				bizNewContent = aesBizContent
+			}
 			buf = &bytes.Buffer{}
 			enc := json.NewEncoder(buf)
 			enc.SetEscapeHTML(false)
-			err = enc.Encode(bizContent)
+			err = enc.Encode(bizNewContent)
 			if err != nil {
 				return nil, err
 			}
@@ -428,10 +448,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 		return nil, errors.New("context must be non-nil")
 	}
 	req = withContext(ctx, req)
-
 	resp, err := c.client.Do(req)
-	//sliceByte, _ := ioutil.ReadAll(resp.Body)
-	//fmt.Println(string(sliceByte), "body")
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
@@ -452,7 +469,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 			return response, err
 		}
 	} else {
-		err = c.CheckResponse(resp, "")
+		err = c.CheckResponse(resp, req.URL.Query().Get("method"))
 		if err != nil {
 			return response, err
 		}
@@ -477,6 +494,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 // CheckResponse 检查返回内容
 func (c *Client) CheckResponse(r *http.Response, requestMethod string) error {
 	errorResponse := &ErrorResponse{Response: r}
+	var backData []byte
 	data, err := ioutil.ReadAll(r.Body)
 	var resp, sign []byte
 	if err == nil && data != nil {
@@ -485,9 +503,11 @@ func (c *Client) CheckResponse(r *http.Response, requestMethod string) error {
 			return err
 		}
 
+		var responseKey string
 		for k, v := range obj {
 			if strings.Contains(k, "response") {
 				resp = v
+				responseKey = k
 				break
 			}
 		}
@@ -501,14 +521,49 @@ func (c *Client) CheckResponse(r *http.Response, requestMethod string) error {
 				return fmt.Errorf("支付宝同步请求签名验证不通过: %w", err)
 			}
 		}
-		if err = json.Unmarshal(resp, &errorResponse); err != nil {
-			return fmt.Errorf("解析支付宝返回结构失败: %w", err)
+		if !strings.HasPrefix(string(resp), "{") { // 加密返回
+			// TODO 目前就一个三方应用直接写死 多个的时候直接初始化client好
+			if conf.GetAliMiniProgramConf().AppAesKey == "" {
+				return fmt.Errorf("AESKEY未配置")
+			}
+			keyByte, err := base64.StdEncoding.DecodeString(conf.GetAliMiniProgramConf().AppAesKey)
+			if err != nil {
+				return err
+			}
+			dataSlice, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(string(resp), "\"", ""))
+			if err != nil {
+				return err
+			}
+			backSlice, err := AesCBCDecrypt(dataSlice, keyByte)
+			if err != nil {
+				return err
+			}
+			if err = json.Unmarshal(backSlice, &errorResponse); err != nil {
+				return fmt.Errorf("解析支付宝返回结构失败: %w", err)
+			}
+			obj[responseKey] = backSlice
+			byteData, err := json.Marshal(obj)
+			if err != nil {
+				return err
+			}
+			backData = byteData
+		} else {
+			if err = json.Unmarshal(resp, &errorResponse); err != nil {
+				return fmt.Errorf("解析支付宝返回结构失败: %w", err)
+			}
 		}
 	}
-	buf := bytes.NewBuffer(data)
-	if requestMethod == "alipay.system.oauth.token" && r.StatusCode == 200 {
-		r.Body = ioutil.NopCloser(buf)
-		return nil
+	if len(backData) == 0 {
+		backData = data
+	}
+	buf := bytes.NewBuffer(backData)
+	if requestMethod == "alipay.system.oauth.token" {
+		if errorResponse.Code == "" && errorResponse.SubCode == "" && errorResponse.SubMsg == "" {
+			r.Body = ioutil.NopCloser(buf)
+			return nil
+		} else {
+			return errorResponse
+		}
 	} else {
 		if errorResponse.Code == "10000" {
 			r.Body = ioutil.NopCloser(buf)
